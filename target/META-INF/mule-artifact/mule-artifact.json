@@ -1,0 +1,29 @@
+{
+  "configs": [
+    "xml-json.xml"
+  ],
+  "secureProperties": [],
+  "redeploymentEnabled": true,
+  "name": "2a55a23c-6031-4dfa-8646-5a5a3468e424:xml-json:1.0.0",
+  "minMuleVersion": "4.3.0",
+  "requiredProduct": "MULE_EE",
+  "classLoaderModelLoaderDescriptor": {
+    "id": "mule",
+    "attributes": {
+      "exportedPackages": [],
+      "exportedResources": [
+        "application-types.xml",
+        "examples/3-products-1.json",
+        "examples/3-products.json",
+        "examples/SC-1007130-1010-2214133552-1.xml",
+        "examples/SC-1007130-1010-2214133552.xml",
+        "log4j2.xml",
+        "xml-json.xml"
+      ]
+    }
+  },
+  "bundleDescriptorLoader": {
+    "id": "mule",
+    "attributes": {}
+  }
+}

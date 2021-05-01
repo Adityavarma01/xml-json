@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns:file="http://www.mulesoft.org/schema/mule/file"
+	xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce"
+	xmlns:ftp="http://www.mulesoft.org/schema/mule/ftp" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/ftp http://www.mulesoft.org/schema/mule/ftp/current/mule-ftp.xsd
+http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="cad9ea3c-b2cd-4582-9bc1-5428b16626e3" >
+		<http:listener-connection host="0.0.0.0" port="8081" />
+	</http:listener-config>
+	<flow name="xml-jsonFlow" doc:id="49fe42fd-5c31-46d3-ac11-fb8c6ffc234e" >
+		<http:listener doc:name="Listener" doc:id="f1b55be0-ba2f-42ed-b0f6-fa6e1afed018" config-ref="HTTP_Listener_config" path="/jsonfile"/>
+		<ee:transform doc:name="Transform Message" doc:id="cbe1e49f-6a45-4b13-85a0-7809cd5afa8f" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	documentId: payload.ItemRegistry.Header.HeaderReport.DocumentId as String,
+	reportTypeCode: payload.ItemRegistry.Header.HeaderReport.ReportTypeCode,
+	actionCode: payload.ItemRegistry.Header.HeaderReport.ActionCode as String,
+	vendor: payload.ItemRegistry.Header.HeaderReport.Vendor,
+	vendorName: payload.ItemRegistry.Header.Address.AddressName,
+	items: payload.ItemRegistry.Structure.*LineItem map ( lineItem , indexOfLineItem ) -> {
+	    buyerPartNumber: if(isEmpty(lineItem.InventoryLine.BuyerPartNumber)) "" else (lineItem.InventoryLine.BuyerPartNumber) as String,
+		vendorPartNumber: lineItem.InventoryLine.VendorPartNumber as String default "",
+		productDescription: lineItem.ProductOrItemDescription.ProductDescription default "",
+		upc: lineItem.InventoryLine.ConsumerPackageCode as String default "",
+		mfgName: if ( lineItem.Address.AddressTypeCode=="MF" ) (lineItem.Address.AddressName) else "",
+		mfgPartNumber: lineItem.InventoryLine.ProductID.PartNumber default "",
+		casePack: lineItem.InventoryLine.ProductSizeDescription default "",
+		packQualifier: lineItem.PhysicalDetails.PackQualifier default "",
+		packValue: lineItem.PhysicalDetails.PackValue default 0,
+		packSize: lineItem.PhysicalDetails.PackSize default 0,
+		packUOM: lineItem.PhysicalDetails.PackUOM default "",
+		weightQualifier: lineItem.PhysicalDetails.WeightQualifier default "",
+		packWeight: if(isEmpty(lineItem.PhysicalDetails.PackWeight)) "" else ( if(lineItem.PhysicalDetails.PackWeight contains ".") lineItem.PhysicalDetails.PackWeight as String {format: "0.00", roundMode:"DOWN"} else lineItem.PhysicalDetails.PackWeight ),
+		packWeightUOM: lineItem.PhysicalDetails.PackWeightUOM default "",
+		splitPack: if ( lineItem.Reference.ReferenceQual == "PHC" ) (lineItem.Reference.ReferenceID) as String else "",
+		priceEffectiveDate: lineItem.PriceInformation.EffectiveDate as String default "",
+		priceExpirationDate: lineItem.PriceInformation.ExpirationDate as String default "",
+		priceTypeIDCode: if(!isEmpty(lineItem.*PriceInformation)) (lineItem.*PriceInformation.PriceTypeIDCode reduce ($$ ++ $)) else ('{ "errorFound" : "true", "errorMessage": "ERROR: Split-Pack indicated but no EA price"}'),
+		unitPrice: lineItem.*PriceInformation.UnitPrice reduce ($$ ++ $) default 0,
+		priceQuantity: lineItem.*PriceInformation.Quantity reduce ($$ ++ $) default 0,
+		priceQuantityUOM: lineItem.*PriceInformation.QuantityUOM reduce ($$ ++ $) default ""
+	}
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+</mule>
